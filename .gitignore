@@ -1,0 +1,8 @@
+*.sublime-project
+*.sublime-workspace
+
+test.rb
+
+*.pdf
+*.pid
+
