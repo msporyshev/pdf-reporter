@@ -3,6 +3,7 @@
 
 test.rb
 
+*.log
 *.pdf
 *.pid
 

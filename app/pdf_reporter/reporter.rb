@@ -1,11 +1,11 @@
 require "mysql2"
+require "digest"
 require File.expand_path(File.dirname(__FILE__) + '/view.rb')
 
 class PdfReporter
 
   class Reporter
-    LOG_LOCAL_FILE_PATH = "log/reporter.log"
-    GEN_FILE_PATH = File.expand_path(File.dirname(__FILE__) + '/report.pdf')
+    LOG_LOCAL_FILE_PATH = File.dirname(__FILE__) + "/log/reporter.log"
 
     Report = Struct.new(:header, :body)
 
@@ -21,7 +21,7 @@ class PdfReporter
 
       @report = Report.new([[], []], {})
 
-      # begin
+      begin
         @client = Mysql2::Client.new(
           host: "localhost",
           username: "root",
@@ -29,14 +29,16 @@ class PdfReporter
           database: "store_development"
         )
         @client.query_options.merge!(:as => :array)
-      # rescue Mysql2::Error => e
-
-      # end
+      rescue Mysql2::Error => e
+        File.open(LOG_LOCAL_FILE_PATH, "a") { |file| file.puts e }
+      end
     end
 
     def gen_report(rows_field, columns_field, value_type)
       init_report(rows_field, columns_field, value_type)
-      View.new(@report).gen_pdf(GEN_FILE_PATH)
+      name = "#{rows_field.to_s}_#{columns_field.to_s}_#{value_type.to_s}"
+      @gen_file_path = "/home/max/study/projects/rails_apps/store/public/reports/#{name.to_s}.pdf"
+      View.new(@report).gen_pdf(@gen_file_path)
     end
 
     private
@@ -95,7 +97,7 @@ class PdfReporter
         end
       end
 
-      REAL_ROWS_COLS_N_VALS_NAMES = {
+      REAL_NAMES = {
         :user => "users.login",
         :category => "categories.name",
         :purchased_at => "carts.purchased_at",
@@ -105,9 +107,9 @@ class PdfReporter
       }
 
       def get_report_info(rows, columns, values)
-        rows = REAL_ROWS_COLS_N_VALS_NAMES[rows]
-        columns = REAL_ROWS_COLS_N_VALS_NAMES[columns]
-        values = REAL_ROWS_COLS_N_VALS_NAMES[values]
+        rows = REAL_NAMES[rows]
+        columns = REAL_NAMES[columns]
+        values = REAL_NAMES[values]
         return [] if rows.empty? and columns.empty?
 
         query =<<SQL
@@ -122,12 +124,12 @@ WHERE carts.purchased_at IS NOT NULL
 GROUP BY #{select_or_group_query_partial(rows, columns)}
 SQL
 
-        # begin
+        begin
           report = @client.query(query)
           return report
-        # rescue Mysql2::Error => e
-
-        # end
+        rescue Mysql2::Error => e
+          File.open(LOG_LOCAL_FILE_PATH, "a") { |file| file.puts e }
+        end
       end
 
       def select_or_group_query_partial(*args)

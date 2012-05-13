@@ -14,8 +14,8 @@ class PdfReporter
 
     def gen_pdf(file_path)
       rhtml =<<HTML
-      <h1> Report for #{Time.now.to_s}</h1>
-<table class="table table-striped table-bordered" id="report">
+<h1> Report for #{Time.now.to_s}</h1>
+<table border="1">
   <thead>
     <th>
       <% @report.header[1].each do |header| %>
