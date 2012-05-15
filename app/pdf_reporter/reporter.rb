@@ -1,11 +1,12 @@
 require "mysql2"
 require "digest"
+require "date"
 require File.expand_path(File.dirname(__FILE__) + '/view.rb')
 
 class PdfReporter
 
   class Reporter
-    LOG_LOCAL_FILE_PATH = File.dirname(__FILE__) + "/log/reporter.log"
+    LOG_LOCAL_FILE_PATH = PdfReporter.root_dir + "/log/reporter.log"
 
     Report = Struct.new(:header, :body)
 
@@ -34,11 +35,15 @@ class PdfReporter
       end
     end
 
-    def gen_report(rows_field, columns_field, value_type)
+    def self.gen_report_file_name(rows_field, columns_field, value_type)
+      name = rows_field.to_s + columns_field.to_s + value_type.to_s + Date.today.to_s
+      hash = Digest::MD5.hexdigest(name)
+      return "/home/max/study/projects/rails_apps/store/public/reports/#{hash}.pdf"
+    end
+
+    def gen_report(rows_field, columns_field, value_type, file_name)
       init_report(rows_field, columns_field, value_type)
-      name = "#{rows_field.to_s}_#{columns_field.to_s}_#{value_type.to_s}"
-      @gen_file_path = "/home/max/study/projects/rails_apps/store/public/reports/#{name.to_s}.pdf"
-      View.new(@report).gen_pdf(@gen_file_path)
+      View.new(@report).gen_pdf(file_name)
     end
 
     private
