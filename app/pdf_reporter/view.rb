@@ -8,13 +8,16 @@ class PdfReporter
 
     include ActionView::Helpers::NumberHelper
 
-    def initialize(report)
-      @report = report
+    def initialize(report, value_type, filter_string)
+      @report, @value_type, @filter_string = report, value_type, filter_string
     end
 
     def gen_pdf(file_path)
       rhtml =<<HTML
 <h1> Report for #{Time.now.to_s}</h1>
+<strong>  Value: </strong> <%= @value_type %>
+<strong>  Fitler SQL: </strong> <%= @filter_string %>
+
 <table border="1">
   <thead>
     <th>
@@ -30,7 +33,6 @@ class PdfReporter
         <% @report.header[1].each do |c_header| %>
           <td>
             <% @report.body[r_header][c_header].each do |cell| %>
-              <label> <%=  cell[:label] %> </label>
               <div>
                 <%= cell[:label] == "Price" ? number_to_currency(cell[:value]) : cell[:value].to_i %>
               </div>

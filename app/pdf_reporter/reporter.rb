@@ -12,13 +12,23 @@ class PdfReporter
     Report = Struct.new(:header, :body)
 
 
-    def initialize
+    def initialize(reports_dir)
+      @count = 0
+      @reports_dir = reports_dir
 
       @get_cell_value = {
         "quantity" => lambda { |report| get_quantity_cell_val(report) },
         "price" => lambda { |report| get_price_cell_val(report) },
         "both" => lambda { |report| get_quantity_and_price_cell_val(report) },
         "" => lambda { |report| [] }
+      }
+
+      @filter_str_func = {
+        product_key_word: method(:single_value_filter_part),
+        user_ids: method(:user_filter_part),
+        category_ids: method(:category_filter_part),
+        price_range_from: method(:single_value_filter_part),
+        price_range_to: method(:single_value_filter_part)
       }
 
       @report = Report.new([[], []], {})
@@ -39,46 +49,65 @@ class PdfReporter
       end
     end
 
-    def self.gen_report_file_name(rows_field, columns_field, value_type, filter_params)
+    def self.gen_report_file_name(rows_field, columns_field, value_type, filter_params, reports_dir)
       name = rows_field.to_s + columns_field.to_s + value_type.to_s + Date.today.to_s + filter_params.inspect
       hash = Digest::MD5.hexdigest(name)
-      return "/home/max/study/projects/rails_apps/store/public/reports/#{hash}.pdf"
+      return File.join(reports_dir, "#{hash}.pdf")
     end
 
     def gen_report(rows_field, columns_field, value_type, file_name, filter_params)
       init_report(rows_field, columns_field, value_type, filter_params)
-      View.new(@report).gen_pdf(file_name)
+      View.new(@report, value_type, search_query(filter_params)).gen_pdf(file_name)
     end
 
     private
 
-      FILTER_STRINGS = {
-        product_key_word: "products.description LIKE %\"?\"% ",
+      FILTER_STR_TEMPLATES = {
+        product_key_word: "products.description LIKE \"%?%\" ",
         user_ids: "users.id IN (?) ",
-        category_ids: "categories.id IN (?)", #TODO исправить чтобы работали родитльские категории
+        category_ids: "categories.path LIKE \"?.%\"",
         price_range_from: "product_carts.price >= ?",
         price_range_to: "product_carts.price <= ?"
       }
 
-      def search_query(params)
+      def category_filter_part(key, category_ids)
+        filter = "( 1 = 0"
+        category_ids.each do |id|
+          cur_filter = FILTER_STR_TEMPLATES[:category_ids].clone
 
+          value = @client.escape(id)
+          cur_filter.gsub!(/\?/, value)
+
+          filter << " OR " << cur_filter
+        end
+
+        filter += ")"
+      end
+
+      def user_filter_part(key, user_ids)
+        filter_str = FILTER_STR_TEMPLATES[:user_ids].clone
+        value_str = ""
+        user_ids.each { |e| value_str << @client.escape(e) << "," }
+        value_str.chop!
+
+        filter_str.gsub!(/\?/, value_str)
+      end
+
+      def single_value_filter_part(key, val)
+        filter_str = FILTER_STR_TEMPLATES[key.to_sym].clone
+        value_str = @client.escape(val)
+        filter_str.gsub!(/\?/, value_str)
+      end
+
+      def search_query(params)
+        @count += 1
         query_str = ""
         params.each_pair do |key, val|
-          cur_filter = FILTER_STRINGS[key.to_sym]
+          filter_str_func = @filter_str_func[key.to_sym]
 
-          next if cur_filter.nil? || val.is_a?(String) && val.empty? || val.nil?
+          next if filter_str_func.nil? || val.is_a?(String) && val.empty? || val.nil?
 
-          value_str = ""
-          if val.is_a? Array
-            val.each { |e| value_str << @client.escape(e.to_s) << "," }
-            value_str.chop!
-          else
-            value_str = @client.escape(val)
-          end
-
-          cur_filter.gsub!(/\?/, value_str)
-
-          query_str << cur_filter << " AND "
+          query_str << filter_str_func.call(key, val) << " AND "
         end
 
         query_str << "1 = 1"
@@ -105,7 +134,10 @@ class PdfReporter
       end
 
       def get_quantity_and_price_cell_val(report)
-        [{:label => "Quantity", :value => report[-2]}, {:label => "Price", :value => report[-1]}]
+        [
+          {:label => "Quantity", :value => report[-2]},
+          {:label => "Price", :value => report[-1]}
+        ]
       end
 
 

@@ -12,10 +12,11 @@ class PdfReporter
 
   CLIENT_DATA_COUNT = 3
 
-  def initialize(port = 30000)
+  def initialize(reports_dir, port = 30000)
     @client_data = Queue.new
     @server = TCPServer.new "localhost", port
     @server.setsockopt(Socket::SOL_SOCKET, Socket::SO_REUSEADDR, 1)
+    @reports_dir = reports_dir
   end
 
   def start
@@ -25,6 +26,7 @@ class PdfReporter
       running = true
       Signal.trap("QUIT") do
         running = false
+        throw "asdasd"
       end
 
       while running
@@ -41,7 +43,13 @@ class PdfReporter
           col_field = col_field =~ /NULL/ ? nil : col_field.chomp.to_sym
           value_type = value_type =~ /NULL/ ? nil : value_type.chomp.to_sym
 
-          file_name = Reporter.gen_report_file_name(row_field, col_field, value_type, filter_params)
+          file_name = Reporter.gen_report_file_name(
+            row_field,
+            col_field,
+            value_type,
+            filter_params,
+            @reports_dir
+          )
 
           client.puts File.basename(file_name)
           client.close
@@ -59,7 +67,7 @@ class PdfReporter
 
         while !@client_data.empty?
           data = @client_data.pop
-          report = Reporter.new
+          report = Reporter.new(@reports_dir)
           report.gen_report(data[:row], data[:col], data[:val], data[:file_name], data[:filter_params])
         end
       end
@@ -71,5 +79,5 @@ class PdfReporter
 
 end
 
-reporter = PdfReporter.new
+reporter = PdfReporter.new("/home/max/study/projects/rails_apps/store/public/reports/")
 reporter.start
