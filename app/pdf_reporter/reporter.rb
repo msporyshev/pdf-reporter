@@ -17,9 +17,9 @@ class PdfReporter
       @reports_dir = reports_dir
 
       @get_cell_value = {
-        "quantity" => lambda { |report| get_quantity_cell_val(report) },
-        "price" => lambda { |report| get_price_cell_val(report) },
-        "both" => lambda { |report| get_quantity_and_price_cell_val(report) },
+        "quantity" => method(:get_quantity_cell_val),
+        "price" => method(:get_price_cell_val),
+        "both" => method(:get_quantity_and_price_cell_val),
         "" => lambda { |report| [] }
       }
 
@@ -57,7 +57,10 @@ class PdfReporter
 
     def gen_report(rows_field, columns_field, value_type, file_name, filter_params)
       init_report(rows_field, columns_field, value_type, filter_params)
-      View.new(@report, value_type, search_query(filter_params)).gen_pdf(file_name)
+
+      pdf = View.new(@report, value_type, search_query(filter_params))
+
+      File.open(file_name, "w") { |file| file << pdf.render }
     end
 
     private
