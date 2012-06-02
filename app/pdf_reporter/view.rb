@@ -3,20 +3,8 @@ require "action_view"
 require "erb"
 require "prawn"
 
-class Array
-  def sum
-    result = 0
-    if block_given?
-      self.each { |e| result += yield(e) }
-    else
-      self.each { |e| result += e }
-    end
-    result
-  end
-end
-
 class Prawn::Table
-  public :natural_column_widths
+  public :natural_column_widths # эт канеш лол, но не могу понять, почему нет аналогичного паблик метода
 end
 
 class PdfReporter
@@ -24,6 +12,8 @@ class PdfReporter
   class View < Prawn::Document
 
     include ActionView::Helpers::NumberHelper
+
+    MARGIN = 5
 
     def initialize(report, value_type, filter_string)
       super(top_matgin: 70)
@@ -34,21 +24,19 @@ class PdfReporter
       report_table
     end
 
-    def draw_report_table(report_rows)
+    def every_part_column_counts(report_table)
       counts = []
-
-      t = make_table report_rows
 
       cur_count, cur_width = 0, 0
       is_first_table = true
-      t.natural_column_widths.each do |width|
+      report_table.natural_column_widths.each do |width|
         cur_count += 1
         cur_width += width
 
-        if cur_width >= bounds.width and
+        if cur_width >= bounds.width - MARGIN and
           is_first_table or
           !is_first_table and
-          cur_width + t.natural_column_widths[0] >= bounds.width
+          cur_width + report_table.natural_column_widths[0] >= bounds.width - MARGIN
 
           counts << cur_count - 1
           cur_count, cur_width = 1, width
@@ -58,6 +46,13 @@ class PdfReporter
 
       end
       counts << cur_count
+      counts
+    end
+
+    def draw_report_table(report_rows)
+      t = make_table report_rows
+
+      counts = every_part_column_counts(t)
 
       cur_page_table = []
       cur_begin = 0
@@ -87,10 +82,6 @@ class PdfReporter
       move_down 10
       text "Value type:", style: :bold
       text @value_type.to_s
-
-      move_down 10
-      text "Filter SQL:", style: :bold
-      text @filter_string.to_s
     end
 
     def report_table

@@ -3,6 +3,12 @@ require "digest"
 require "date"
 require File.expand_path(File.dirname(__FILE__) + '/view.rb')
 
+class NilClass
+  def empty?
+    true
+  end
+end
+
 class PdfReporter
   ROOT_DIR = "/home/max/study/projects/ruby/socket-prog-gen-pdf/app"
 
@@ -176,7 +182,9 @@ class PdfReporter
       REAL_NAMES = {
         :user => "users.login",
         :category => "categories.name",
-        :purchased_at => "carts.purchased_at",
+        :year => "YEAR(carts.purchased_at)",
+        :month => "DATE_FORMAT(carts.purchased_at, \"%M %Y\")",
+        :day => "DATE_FORMAT(carts.purchased_at, \" %M %D, %Y\")",
         :quantity => "SUM(product_carts.quantity)",
         :price => "SUM(product_carts.price)",
         :both => "SUM(product_carts.quantity), SUM(product_carts.price)"
@@ -198,6 +206,7 @@ FROM carts INNER JOIN users ON users.id = carts.user_id
   INNER JOIN categories ON categories.id = products.category_id
 WHERE carts.purchased_at IS NOT NULL AND #{search_query(filter_params)}
 GROUP BY #{select_or_group_query_partial(rows, columns)}
+ORDER BY carts.purchased_at ASC
 SQL
 
         begin
