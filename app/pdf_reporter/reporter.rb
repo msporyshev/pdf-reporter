@@ -10,7 +10,7 @@ class NilClass
 end
 
 class PdfReporter
-  ROOT_DIR = "/home/max/study/projects/ruby/socket-prog-gen-pdf/app"
+  ROOT_DIR = File.expand_path("../..", __FILE__)
 
   class Reporter
     ERR_LOG_LOCAL_FILE_PATH = PdfReporter::ROOT_DIR + "/log/reporter_err.log"
@@ -34,7 +34,9 @@ class PdfReporter
         user_ids: method(:user_filter_part),
         category_ids: method(:category_filter_part),
         price_range_from: method(:single_value_filter_part),
-        price_range_to: method(:single_value_filter_part)
+        price_range_to: method(:single_value_filter_part),
+        date_from: method(:single_value_filter_part),
+        date_to: method(:single_value_filter_part)
       }
 
       @report = Report.new([[], []], {})
@@ -75,6 +77,8 @@ class PdfReporter
         product_key_word: "products.description LIKE \"%?%\" ",
         user_ids: "users.id IN (?) ",
         category_ids: "categories.path LIKE \"?.%\"",
+        date_from: "DATE(carts.purchased_at) >= \"?\"",
+        date_to: "DATE(carts.purchased_at) <= \"?\"",
         price_range_from: "product_carts.price >= ?",
         price_range_to: "product_carts.price <= ?"
       }
@@ -114,7 +118,7 @@ class PdfReporter
         params.each_pair do |key, val|
           filter_str_func = @filter_str_func[key.to_sym]
 
-          next if filter_str_func.nil? || val.is_a?(String) && val.empty? || val.nil?
+          next if filter_str_func.nil? || val.nil? || val.is_a?(String) && val.empty?
 
           query_str << filter_str_func.call(key, val) << " AND "
         end

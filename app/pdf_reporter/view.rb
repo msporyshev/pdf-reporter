@@ -1,6 +1,4 @@
-require "wicked_pdf"
 require "action_view"
-require "erb"
 require "prawn"
 
 class Prawn::Table
@@ -100,9 +98,11 @@ class PdfReporter
         @report.header[1].each do |c_header|
             cur_row << "" if @report.body[r_header][c_header].blank?
 
+            cur_cell = ""
             @report.body[r_header][c_header].each do |cell|
-                cur_row <<  (cell[:label] == "Price" ? number_to_currency(cell[:value]).to_s : cell[:value].to_i)
+              cur_cell += (cell[:label] == "Price" ? number_to_currency(cell[:value]).to_s : cell[:value].to_i.to_s) + ", "
             end
+            cur_row << cur_cell.chop.chop
         end
 
         result << cur_row
