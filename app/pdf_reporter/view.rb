@@ -5,6 +5,13 @@ class Prawn::Table
   public :natural_column_widths # эт канеш лол, но не могу понять, почему нет аналогичного паблик метода
 end
 
+class NilClass
+  def to_s
+    ""
+  end
+
+end
+
 class PdfReporter
 
   class View < Prawn::Document
@@ -31,10 +38,10 @@ class PdfReporter
         cur_count += 1
         cur_width += width
 
-        if cur_width >= bounds.width - MARGIN and
-          is_first_table or
-          !is_first_table and
-          cur_width + report_table.natural_column_widths[0] >= bounds.width - MARGIN
+        # cur_width + (is_first_table)? 0 : report_table.natural_column_widths[0] >= bounds.width - MARGIN
+
+        if cur_width >= bounds.width - MARGIN and is_first_table or
+          !is_first_table and cur_width + report_table.natural_column_widths[0] >= bounds.width - MARGIN
 
           counts << cur_count - 1
           cur_count, cur_width = 1, width
@@ -96,13 +103,13 @@ class PdfReporter
         cur_row = []
         cur_row << r_header.to_s
         @report.header[1].each do |c_header|
-            cur_row << "" if @report.body[r_header][c_header].blank?
 
-            cur_cell = ""
+            cell_str = ""
             @report.body[r_header][c_header].each do |cell|
-              cur_cell += (cell[:label] == "Price" ? number_to_currency(cell[:value]).to_s : cell[:value].to_i.to_s) + ", "
+              cell_str << (cell[:label] == "Price" ? number_to_currency(cell[:value]).to_s : cell[:value].to_i.to_s) << ", "
             end
-            cur_row << cur_cell.chop.chop
+            cur_row << cell_str.chop.chop
+
         end
 
         result << cur_row
